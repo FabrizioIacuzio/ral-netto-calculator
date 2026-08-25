@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolatore RAL → Netto | Prototipo Jet HR</title>
+<style>
+  :root {
+    --primary: #2b3a67;
+    --accent: #4f6df5;
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --border: #e2e4ec;
+    --text: #1c2033;
+    --muted: #6b7089;
+    --good: #1a8f5e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 32px 16px 80px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(20,20,40,0.04);
+  }
+  label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 6px; }
+  .input-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 220px; }
+  input[type="number"] {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+  }
+  input[type="number"]:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 13px 26px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:hover { background: #3d59e0; }
+  .hint { color: var(--muted); font-size: 0.82rem; margin-top: 6px; }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .stat {
+    background: #f9fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .stat .label { font-size: 0.78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
+  .stat .value { font-size: 1.5rem; font-weight: 700; }
+  .stat.highlight .value { color: var(--good); }
+  .stat.tax .value { color: #c0392b; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; border-top: 2px solid var(--text); border-bottom: none; }
+  tr.credit td { color: var(--good); }
+
+  details summary { cursor: pointer; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+  details[open] summary { margin-bottom: 14px; }
+  ul.assumptions li { margin-bottom: 8px; line-height: 1.5; font-size: 0.92rem; }
+  ul.assumptions { padding-left: 20px; margin: 0; }
+  .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 12px; }
+  .badge {
+    display: inline-block;
+    background: #eef1fd;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 30px; }
+  #resultsCard { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Calcolatore RAL → Netto <span class="badge">Prototipo</span></h1>
+  <p class="subtitle">Proiezione di retribuzione netta annuale a partire dalla RAL, per un impiegato a tempo indeterminato residente a Milano — Legge di Bilancio 2026.</p>
+
+  <div class="card">
+    <div class="input-row">
+      <div class="field">
+        <label for="ralInput">Retribuzione Annua Lorda (RAL)</label>
+        <input type="number" id="ralInput" placeholder="Es. 32000" min="0" step="500" value="32000">
+        <div class="hint">Importo lordo annuo su 13 mensilità, comprensivo di tredicesima.</div>
+      </div>
+      <button onclick="calcola()">Calcola</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultsCard">
+    <div class="results-grid">
+      <div class="stat highlight">
+        <div class="label">Netto annuale</div>
+        <div class="value" id="outNettoAnno">–</div>
+      </div>
+      <div class="stat highlight">
+        <div class="label">Netto mensile (÷13)</div>
+        <div class="value" id="outNettoMese">–</div>
+      </div>
+      <div class="stat tax">
+        <div class="label">Totale trattenute</div>
+        <div class="value" id="outTotTrattenute">–</div>
+      </div>
+      <div class="stat">
+        <div class="label">Costo % sulla RAL</div>
+        <div class="value" id="outPercTax">–</div>
+      </div>
+    </div>
+
+    <h3 class="section-title">Dettaglio del calcolo</h3>
+    <table id="breakdownTable">
+      <thead>
+        <tr><th>Voce</th><th class="num">Importo annuo</th></tr>
+      </thead>
+      <tbody id="breakdownBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>Ipotesi, semplificazioni e fonti usate nel calcolo</summary>
+      <ul class="assumptions">
+        <li><strong>Contratto e localizzazione:</strong> impiegato a tempo indeterminato, full time, anno intero lavorato, residente e con sede di lavoro a Milano (Regione Lombardia). Nessun carico di famiglia, agevolazione (es. impatriati, disabilità) o altro reddito dichiarato.</li>
+        <li><strong>Composizione della RAL:</strong> la RAL è considerata su 13 mensilità (12 mensilità + tredicesima), senza elementi variabili (straordinari, superminimi ad personam, welfare/fringe benefit, bonus). Il netto mensile mostrato è una <em>media</em> (netto annuo ÷ 13): non replica le differenze reali tra le singole buste paga mensili.</li>
+        <li><strong>Contributi INPS:</strong> aliquota IVS a carico del lavoratore 9,19% sull'intera RAL (nessun massimale contributivo, non applicabile al caso standard; nessun esonero contributivo specifico, es. madri con 3+ figli).</li>
+        <li><strong>IRPEF nazionale (Legge di Bilancio 2026):</strong> scaglioni 23% fino a 28.000€, 33% da 28.000,01€ a 50.000€, 43% oltre 50.000€, applicati in modo progressivo sull'imponibile fiscale.</li>
+        <li><strong>Riduzione cuneo fiscale (redditi ≤ 20.000€):</strong> quota esente dal reddito di lavoro dipendente pari al 7,1% (fino a 8.500€), 5,3% (8.500,01–15.000€) o 4,8% (15.000,01–20.000€).</li>
+        <li><strong>Ulteriore detrazione cuneo fiscale (redditi 20.000–40.000€):</strong> 1.000€ fissi tra 20.000,01€ e 32.000€, decrescente linearmente fino ad azzerarsi a 40.000€.</li>
+        <li><strong>Detrazioni da lavoro dipendente:</strong> 1.955€ fino a 15.000€; formula decrescente 1.910 + 1.190×(28.000−reddito)/13.000 tra 15.000,01 e 28.000€; formula 1.910×(50.000−reddito)/22.000 tra 28.000,01 e 50.000€; zero oltre 50.000€.</li>
+        <li><strong>Trattamento integrativo ("ex bonus Renzi"):</strong> fino a 1.200€/anno per redditi ≤15.000€; tra 15.000,01 e 28.000€ riconosciuto solo per la quota di incapienza (quando la detrazione da lavoro dipendente supera l'IRPEF lorda), semplificando la condizione reale di calcolo dell'incapienza. Nessun trattamento oltre 28.000€.</li>
+        <li><strong>Addizionale regionale Lombardia:</strong> a scaglioni progressivi sull'imponibile IRPEF — 1,23% fino a 15.000€, 1,58% fino a 28.000€, 1,72% fino a 55.000€, 1,73% oltre.</li>
+        <li><strong>Addizionale comunale Milano:</strong> aliquota unica 0,80%, con esenzione totale per imponibile ≤ 23.000€; superata la soglia si applica sull'intero imponibile (non a scaglioni), come da regolamento comunale.</li>
+        <li><strong>Non incluso nel prototipo:</strong> conguagli, arrotondamenti giornalieri di busta paga, TFR, bonus contrattuali collettivi (es. detassazione premi di risultato, straordinari notturni/festivi), riduzione delle detrazioni per redditi oltre 200.000€, deduzioni per oneri personali (spese mediche, mutuo, ecc.).</li>
+      </ul>
+    </details>
+  </div>
+
+  <footer>Prototipo a scopo dimostrativo — non costituisce consulenza fiscale o busta paga ufficiale.</footer>
+</div>
+
+<script>
+/* ---------- Parametri fiscali di riferimento: Legge di Bilancio 2026 (L. 199/2025) ---------- */
+const INPS_RATE = 0.0919;
+
+const IRPEF_BRACKETS = [
+  { upTo: 28000, rate: 0.23 },
+  { upTo: 50000, rate: 0.33 },
+  { upTo: Infinity, rate: 0.43 }
+];
+
+const REGIONALE_LOMBARDIA_BRACKETS = [
+  { upTo: 15000, rate: 0.0123 },
+  { upTo: 28000, rate: 0.0158 },
+  { upTo: 55000, rate: 0.0172 },
+  { upTo: Infinity, rate: 0.0173 }
+];
+
+const COMUNALE_MILANO_RATE = 0.008;
+const COMUNALE_MILANO_SOGLIA_ESENZIONE = 23000;
+
+/* Applica un set di scaglioni progressivi (tipo IRPEF) a un imponibile */
+function applyProgressiveBrackets(imponibile, brackets) {
+  let tax = 0;
+  let lowerBound = 0;
+  for (const bracket of brackets) {
+    if (imponibile <= lowerBound) break;
+    const taxableInBracket = Math.min(imponibile, bracket.upTo) - lowerBound;
+    tax += taxableInBracket * bracket.rate;
+    lowerBound = bracket.upTo;
+  }
+  return tax;
+}
+
+/* Quota di reddito da lavoro dipendente esente da imposta (cuneo fiscale), per redditi <= 20.000 */
+function quotaEsenteCuneo(imponibileAnteEsenzione) {
+  if (imponibileAnteEsenzione <= 8500) return imponibileAnteEsenzione * 0.071;
+  if (imponibileAnteEsenzione <= 15000) return imponibileAnteEsenzione * 0.053;
+  if (imponibileAnteEsenzione <= 20000) return imponibileAnteEsenzione * 0.048;
+  return 0;
+}
+
+/* Ulteriore detrazione cuneo fiscale, per redditi tra 20.000 e 40.000 */
+function ulterioreDetrazioneCuneo(reddito) {
+  if (reddito <= 20000) return 0;
+  if (reddito <= 32000) return 1000;
+  if (reddito <= 40000) return 1000 * (40000 - reddito) / 8000;
+  return 0;
+}
+
+/* Detrazioni da lavoro dipendente (D.Lgs. 216/2023, confermate 2026) */
+function detrazioneLavoroDipendente(reddito) {
+  if (reddito <= 15000) return 1955;
+  if (reddito <= 28000) return 1910 + 1190 * (28000 - reddito) / 13000;
+  if (reddito <= 50000) return 1910 * (50000 - reddito) / 22000;
+  return 0;
+}
+
+/* Trattamento integrativo ("ex bonus Renzi"), semplificato */
+function trattamentoIntegrativo(reddito, irpefLorda, detrazioneLavDip) {
+  if (reddito <= 15000) return 1200;
+  if (reddito <= 28000) {
+    const incapienza = Math.max(0, detrazioneLavDip - irpefLorda);
+    return Math.min(1200, incapienza);
+  }
+  return 0;
+}
+
+function eur(n) {
+  return n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+}
+
+function calcola() {
+  const ral = parseFloat(document.getElementById('ralInput').value);
+  if (!ral || ral <= 0) {
+    alert('Inserisci una RAL valida maggiore di zero.');
+    return;
+  }
+
+  // 1. Contributi INPS a carico del lavoratore
+  const inps = ral * INPS_RATE;
+  const imponibileAnteEsenzione = ral - inps;
+
+  // 2. Quota esente cuneo fiscale (riduce l'imponibile IRPEF)
+  const quotaEsente = quotaEsenteCuneo(imponibileAnteEsenzione);
+  const reddito = imponibileAnteEsenzione - quotaEsente; // imponibile IRPEF effettivo
+
+  // 3. IRPEF lorda
+  const irpefLorda = applyProgressiveBrackets(reddito, IRPEF_BRACKETS);
+
+  // 4. Detrazioni
+  const detrazioneLavDip = detrazioneLavoroDipendente(reddito);
+  const ulterioreDetrazione = ulterioreDetrazioneCuneo(reddito);
+  const irpefNettaAnteBonus = Math.max(0, irpefLorda - detrazioneLavDip - ulterioreDetrazione);
+
+  // 5. Trattamento integrativo (credito, può azzerare/ridurre ulteriormente il carico fiscale)
+  const bonus = trattamentoIntegrativo(reddito, irpefLorda, detrazioneLavDip);
+  const irpefNettaFinale = irpefNettaAnteBonus - bonus;
+
+  // 6. Addizionali locali
+  const addRegionale = applyProgressiveBrackets(reddito, REGIONALE_LOMBARDIA_BRACKETS);
+  const addComunale = reddito > COMUNALE_MILANO_SOGLIA_ESENZIONE ? reddito * COMUNALE_MILANO_RATE : 0;
+
+  // 7. Totali
+  const totaleTrattenuteFiscali = irpefNettaFinale + addRegionale + addComunale;
+  const nettoAnno = ral - inps - totaleTrattenuteFiscali;
+  const nettoMese = nettoAnno / 13;
+  const totaleGenerale = inps + totaleTrattenuteFiscali;
+
+  // --- Render ---
+  document.getElementById('resultsCard').style.display = 'block';
+  document.getElementById('outNettoAnno').textContent = eur(nettoAnno);
+  document.getElementById('outNettoMese').textContent = eur(nettoMese);
+  document.getElementById('outTotTrattenute').textContent = eur(totaleGenerale);
+  document.getElementById('outPercTax').textContent = ((totaleGenerale / ral) * 100).toFixed(1) + '%';
+
+  const rows = [
+    ['RAL (Retribuzione Annua Lorda)', ral, false],
+    ['Contributi INPS lavoratore (9,19%)', -inps, false],
+    ['Imponibile fiscale (dopo quota esente cuneo)', reddito, false],
+    ['IRPEF lorda', -irpefLorda, false],
+    ['Detrazioni da lavoro dipendente', detrazioneLavDip, true],
+    ['Ulteriore detrazione cuneo fiscale', ulterioreDetrazione, true],
+    ['Trattamento integrativo (ex bonus Renzi)', bonus, true],
+    ['IRPEF netta effettiva', -irpefNettaFinale, false],
+    ['Addizionale regionale Lombardia', -addRegionale, false],
+    ['Addizionale comunale Milano', -addComunale, false],
+  ];
+
+  const tbody = document.getElementById('breakdownBody');
+  tbody.innerHTML = '';
+  rows.forEach(([label, value, isCredit]) => {
+    const tr = document.createElement('tr');
+    if (isCredit) tr.className = 'credit';
+    tr.innerHTML = `<td>${label}</td><td class="num">${value >= 0 ? '+' : ''}${eur(value)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total';
+  totalRow.innerHTML = `<td>Netto annuale</td><td class="num">${eur(nettoAnno)}</td>`;
+  tbody.appendChild(totalRow);
+
+  const totalRowMese = document.createElement('tr');
+  totalRowMese.className = 'total';
+  totalRowMese.innerHTML = `<td>Netto mensile (÷13)</td><td class="num">${eur(nettoMese)}</td>`;
+  tbody.appendChild(totalRowMese);
+}
+
+// Calcolo iniziale con valore di esempio
+calcola();
+</script>
+</body>
+</html>
