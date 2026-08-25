@@ -1,5 +1,7 @@
 # Calcolatore RAL → Netto (prototipo)
 
+🔗 **Demo live:** https://temporary-sonic-sable-tnvydin.vercel.app
+
 Prototipo che stima il **netto annuale e mensile** e le **trattenute** a partire da una **RAL** (Retribuzione Annua Lorda), per un caso semplice e standard:
 
 - impiegato a tempo indeterminato, full time, anno intero lavorato
